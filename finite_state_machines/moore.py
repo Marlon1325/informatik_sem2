@@ -1,0 +1,251 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+import itertools
+
+
+
+import pandas as pd
+
+class Delta:
+    "Zustandübergangsfunktion"
+    def __init__(self,table:dict):
+        n=len(list(table.values())[0])
+        states = list(range(n))
+        self.df = pd.DataFrame(table, index=states, dtype=np.int16).T
+        self.df.apply(lambda x: "s"+str(x))
+        
+    def __call__(self, state, input):
+        if state not in self.df.columns:
+            raise ValueError(f"State {state} is not in {list(self.df.columns)}")
+        if input not in self.df.index:
+            raise ValueError(f"Input {state} is not in {list(self.df.index)}")
+        return int(self.df.loc[input, state])
+
+    def __repr__(self):
+        return self.df.__repr__()
+        
+
+
+class Beta:
+    "Ausgabefunktion"
+    def __init__(self, array):
+        states = list(range(len(array)))
+        self.S = pd.Series(array, index=states, dtype=np.int16)
+
+    def __call__(self, state):
+        if not state in self.S.index:
+            raise ValueError(f"State {state} is not in {list(self.S.index)}")
+        return int(self.S.loc[state])
+    
+    def __repr__(self):
+        return self.S.__repr__()
+    
+
+
+
+class Moore:
+    def __init__(self, states: tuple, inputs: tuple, outputs: tuple, delta: Delta, beta: Beta, q0=None):
+        self.states = tuple(states)
+        self.inputs = tuple(inputs)
+        self.outputs = tuple(outputs)
+
+        if not isinstance(delta, Delta):
+            delta = Delta(delta)
+        if not isinstance(beta, Beta):
+            beta = Beta(beta)
+        self.delta = delta
+        self.beta = beta
+
+        self.q = q0 if q0 else self.states[0]
+
+    def __call__(self, inp, printState=False):
+        if inp not in self.inputs:
+            raise ValueError(f"{inp} is not in the Input-Alphabet")
+        if printState:
+            print(f"State: {self.q} -> ", end="")
+
+        self.q = self.delta(self.q, inp)
+
+        if printState:
+            print(f"{self.q}")
+        return self.beta(self.q)
+    
+    def __getitem__(self, x):
+        "Moore[state, input]"
+        state, inp = x
+        if inp not in self.inputs:
+            raise ValueError(f"{inp} is not in the Input-Alphabet")
+        
+        state, self.q = self.q, state
+        out =self(inp)
+
+        self.q = state
+        return out
+
+    def __repr__(self):
+        return f"""
+States:  {self.states}
+Inputs:  {self.inputs}
+Outputs: {self.outputs}
+
+delta - "Zustandübergangsfunktion": 
+{self.delta.__repr__()}
+
+beta - Ausgabefunktion:
+{self.beta.__repr__()}
+"""
+
+    def minimize_plot(M) -> list[set[int]]:
+        "plots table with marked pairs and fusible state-pairs"
+        if not isinstance(M, Moore):
+            raise ValueError("Machine must be an instance of Moore-class")
+
+        n = len(M.states)
+        matrix = pd.DataFrame(
+            np.zeros((n, n), dtype=np.int8),
+            columns=M.states, index=M.states
+        )
+
+        # Runde 1: Markiere unterschiedliche Ausgaben
+        round_counter = 1
+        for s1, s2 in itertools.combinations(M.states, 2):
+            if M.beta(s1) != M.beta(s2):
+                i1, i2 = sorted((s1, s2))
+                matrix.at[i1, i2] = round_counter  # R1 = unterschiedlich
+
+        # Folge-Runden: Propagation über Übergänge
+        changed = True
+        while changed:
+            changed = False
+            round_counter += 1
+            for (i, s1), (j, s2) in itertools.combinations(enumerate(M.states), 2):
+                i1, i2 = sorted((s1, s2))
+                if matrix.at[i1, i2] == 0:  # Noch unmarkiert
+                    for a in M.inputs:
+                        next_s1 = M.delta(s1, a)
+                        next_s2 = M.delta(s2, a)
+                        n1, n2 = sorted((next_s1, next_s2))
+                        if matrix.at[n1, n2] != 0:
+                            matrix.at[i1, i2] = round_counter  # markiere mit aktueller Runde
+                            changed = True
+                            break
+
+        
+        # Für Visualisierung: Matrix etwas auffüllen
+        matrix_vis = (matrix + np.triu(np.ones((n, n), dtype=int)) - np.diag(np.ones(n))).astype(np.int8)
+        max_round = matrix.values.max()
+        colors = ["#ffffff", "#000000", "#FF9D00", "#00CF26", "#F81B1B", "#FFFF00", "#0000FF", "#00EAFF", "#C300FF"][:max_round + 2]
+
+        cmap = ListedColormap(colors)
+        fig, ax = plt.subplots()
+
+        ax.set_xticks(np.arange(-0.5, n, 1), minor=True)
+        ax.set_yticks(np.arange(-0.5, n, 1), minor=True)
+        ax.grid(which='minor', color='black', linestyle='-', linewidth=0.5)
+
+        bounds = np.arange(max_round + 3) - 0.5
+        norm = BoundaryNorm(bounds, cmap.N)
+        ax.set_title("Marked State Pairs by Round")
+        cax = ax.matshow(matrix_vis.T, cmap=cmap, norm=norm)  # .T = visuell obere Dreiecksmatrix
+
+        ax.set_xlabel("state")
+        ax.set_ylabel("state")
+        ax.set_xticks(range(n))
+        ax.set_yticks(range(n))
+        ax.set_xticklabels(list(M.states))
+        ax.set_yticklabels(list(M.states))
+        ax.xaxis.set_ticks_position('bottom')
+
+        labels = ["", "remaining\nfields"] + [f"R.{r}" for r in range(1, max_round + 1)]
+        cbar = plt.colorbar(cax, ticks=np.arange(max_round + 2))
+        cbar.ax.set_yticklabels(labels)
+
+        plt.show()
+
+        # Unmarkierte Paare (matrix == 0) = verschmelzbar
+        pairs = np.where(matrix_vis == 1)
+
+        pairs = [{int(a), int(b)} for a, b in zip(*pairs)]
+
+        return merge_sets(pairs)
+    
+
+    
+    def create_minimized_moore(M, state_groups):
+        """
+        Minimiert einen Moore-Automaten auf Basis gegebener Äquivalenzklassen
+        und gibt einen neuen Automaten mit ganzzahligen Zuständen zurück.
+        """
+        # Fehlende Zustände ergänzen
+        all_states = set(M.states)
+        grouped_states = set().union(*state_groups)
+        missing_states = all_states - grouped_states
+        for s in missing_states:
+            state_groups.append({s})
+
+        # Mapping: alter Zustand → neuer Zustand
+        state_map = {}
+        for new_state, group in enumerate(state_groups):
+            for old_state in group:
+                state_map[old_state] = new_state
+
+        num_new_states = len(state_groups)
+        new_states = tuple(range(num_new_states))
+
+        # Neue Ausgabefunktion
+        new_beta_values = [M.beta(min(group)) for group in state_groups]
+        new_beta = Beta(new_beta_values)
+
+        # Neue Übergangsfunktion
+        new_delta_dict = {a: [None] * num_new_states for a in M.inputs}
+        for new_state, group in enumerate(state_groups):
+            rep = min(group)
+            for a in M.inputs:
+                old_target = M.delta(rep, a)
+                new_target = state_map[old_target]
+                new_delta_dict[a][new_state] = new_target
+
+        new_delta = Delta(new_delta_dict)
+
+        # Neuer Startzustand
+        new_q0 = state_map[M.q]
+
+        # Neue Output-Menge
+        new_outputs = tuple(sorted(set(new_beta_values)))
+
+        return Moore(
+            states=new_states,
+            inputs=M.inputs,
+            outputs=new_outputs,
+            delta=new_delta,
+            beta=new_beta,
+            q0=new_q0
+        )
+
+
+def merge_sets(sets):
+    sets = [set(s) for s in sets]  # sicherstellen, dass alle Elemente Sets sind
+    merged = []
+
+    while sets:
+        first, *rest = sets
+        first = set(first)
+
+        changed = True
+        while changed:
+            changed = False
+            rest2 = []
+            for s in rest:
+                if first & s:  # es gibt eine Überschneidung
+                    first |= s
+                    changed = True
+                else:
+                    rest2.append(s)
+            rest = rest2
+
+        merged.append(first)
+        sets = rest
+
+    return merged
