@@ -16,7 +16,7 @@ def truth_table(*functions: FunctionType, dtype:type = np.int8)->pd.Series | pd.
     lambda_counter = 0
     for f in functions: 
         if f.__name__ == "<lambda>":
-            name =f"<lambda_{lambda_counter}>"
+            name =f"lambda_{lambda_counter}"
             lambda_counter += 1
         else:
             name = f.__name__
