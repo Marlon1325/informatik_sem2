@@ -11,6 +11,8 @@ class Turing:
         display_tape[absolute_pos] = f"\033[4m\033[91m{display_tape[absolute_pos]}\033[0m"
         print(f"\033[90m{steps:>2}{":"}\033[0m"+" "*3 +f"{head}, ...{''.join(display_tape)}..., {state}")
 
+    def __repr__(self):
+        return self.df.__repr__()
 
     def __call__(self, tape: str, start_index: int):
         tape = list(tape)
