@@ -1,8 +1,10 @@
 import pandas as pd
 
 class Turing:
-    def __init__(self, table, start_state):
+    def __init__(self, table, start_state=None):
         self.df = pd.DataFrame(table, columns=["state", "input", "newstate", "output"])
+        if start_state is None:
+            start_state = self.df["state"].loc[0]
         self.start_state = start_state
 
     def __print(self, steps, head, tape, state,absolute_pos ):
