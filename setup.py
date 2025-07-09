@@ -18,5 +18,8 @@ setup(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
     ],
+    package_data={
+        "informatik_sem2.finite_state_machines.goedel": ["prim_numbers"],
+    },
     python_requires='>=3.12',
 )
