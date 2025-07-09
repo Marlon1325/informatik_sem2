@@ -2,6 +2,7 @@
 boolean_algebra_tools/__pycache__/
 boolean_algebra_tools/McCluskey/__pycache__/
 
+__pycache__/
 finite_state_machines/__pycache__/
 finite_state_machines/goedel/__pycache__/
 build/
