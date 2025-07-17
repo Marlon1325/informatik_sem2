@@ -26,14 +26,11 @@ def sigma2(i,j):
 
 def Turing_from_Goedel(number):
     print(f"Gödelnummer: {number}")
-
     # primfaktorzerlegung
     prims:dict = factorint(number)
     display(Math("$$"+r"\text{Prims:}\hspace{1cm}" + r"\cdot ".join([f"{x}^{{{y}}}" for x, y in prims.items()]) + "$$"))
 
-    if not (2 in prims.keys() and 3 in prims.keys()):
-        raise ValueError(f"{number} is not the Gödelnumber of a Turingmachine")
-    
+
     m = prims[2]
     k = prims[3]
 
@@ -69,6 +66,12 @@ def Turing_from_Goedel(number):
     display(HTML(df.to_html()))
     print("\n")
 
+    for x in prims.keys():
+        if x in (2,3):
+            continue
+        if not x in df["P_sigma2(i,3)"].values and not x in df["P_sigma2(i,4)"].values:
+            raise ValueError(f"{x} ist not used for building the turingmachine")
+        
     for p in prims.keys():
         if p in (2,3):
             continue
@@ -78,7 +81,12 @@ def Turing_from_Goedel(number):
                 i = x.index.item()
                 v = x.item()
                 matrix[i-1,j-1] = prims[v]
-            
+        
+    if not (k >= matrix.T[2]).all():
+        raise ValueError(f"More that k States")
+    
+    if not (m+3 >= matrix.T[3]).all():
+        raise ValueError(f"More than m+3 tape symbols")
 
     def replace_output(x):
         if x == m+1:     return "l"
