@@ -14,7 +14,7 @@ def get_prim_numbers():
             os.path.abspath(__file__)
             ), "prim_numbers"
         )
-    return np.fromfile(prims_path, dtype=np.uint32)
+    return np.fromfile(prims_path, dtype=np.dtype("<i4"))
     
 
 def sigma2(i,j):
