@@ -1,7 +1,5 @@
 from ..truth_table import truth_table
 import pandas as pd
-from .prim_implicant_tools import create_function_from_prims, prim_implicants_table
-
 
 
 
