@@ -46,6 +46,22 @@ class Beta:
 
 
 class Moore:
+    """
+    d = Delta({\n
+    "a": [1,3,7,6,9,5,9,0,4,3,3,9,11],
+    "b": [2,6,6,2,8,11,2,12,10,2,12,6,2],
+    "c": [3,0,3,1,9,2,11,4,7,1,1,0,3]
+})\n
+b = Beta([2,1,1,0,1,0,0,2,1,0,0,1,2])\n
+\n
+M = Moore(
+    list(range(13)),
+    ("a", "b", "c"),
+    (0,1,2),
+    d,b
+)\n
+M.minimize_plot()
+"""
     def __init__(self, states: tuple, inputs: tuple, outputs: tuple, delta: Delta, beta: Beta, q0=None):
         self.states = tuple(states)
         self.inputs = tuple(inputs)

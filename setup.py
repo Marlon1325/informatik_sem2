@@ -9,7 +9,8 @@ setup(
         'numpy',      # Abhängigkeiten hier
         'pandas',
         "sympy",
-        "matplotlib"
+        "matplotlib",
+        "tabulate"
     ],
     author='Marlon E.',
     description='Tools für das 2. Semester in "Angewante Informatik" & "Data Science"',

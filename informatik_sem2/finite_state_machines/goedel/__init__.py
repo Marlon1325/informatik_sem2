@@ -1,6 +1,6 @@
 from ..turing_machine import Turing
 from sympy import factorint
-from IPython.display import display, Math, HTML
+from IPython.display import display, Math, Markdown, HTML
 import numpy as np
 import pandas as pd
 import string, os
@@ -23,11 +23,14 @@ def sigma2(i,j):
 
 
 
-
-def Turing_from_Goedel(number):
-    print(f"Gödelnummer: {number}")
-    # primfaktorzerlegung
-    prims:dict = factorint(number)
+def Turing_from_Goedel(number: int | dict):
+    if isinstance(number, dict):
+        prims = number
+    else:
+        print(f"Gödelnummer: {number}")
+        # primfaktorzerlegung
+        prims:dict = factorint(number)
+        
     display(Math("$$"+r"\text{Prims:}\hspace{1cm}" + r"\cdot ".join([f"{x}^{{{y}}}" for x, y in prims.items()]) + "$$"))
 
 
@@ -60,11 +63,14 @@ def Turing_from_Goedel(number):
         df[f"P_sigma2(i,{j})"] = df[f"P_sigma2(i,{j})"].apply(lambda i: prim_numbers[i-1])
 
 
-    print("")
-    
-    display(Math("$$"+r"\hspace{1.5cm}".join([r"\sigma_2(i,3)", r"\sigma_2(i,4)", r"p_{\sigma_2(i,3)}", r"p_{\sigma_2(i,4)}"]) +"$$"))
-    display(HTML(df.to_html()))
-    print("\n")
+    display(Markdown(
+    df.rename(columns={
+        "sigma2(i,3)": r"$\sigma_2(i,3)$",
+        "sigma2(i,4)": r"$\sigma_2(i,4)$",
+        "P_sigma2(i,3)": r"$p_{\sigma_2(i,3)}$",
+        "P_sigma2(i,4)": r"$p_{\sigma_2(i,3)}$"
+        }).to_markdown()
+    ))
 
     for x in prims.keys():
         if x in (2,3):
@@ -108,6 +114,7 @@ def Turing_from_Goedel(number):
     matrix[:, 1] = np.vectorize(replace_input, otypes=['O'])(matrix[:, 1])
     
     TM = Turing(matrix, 0)
+    TM.df = TM.df.sort_values(by=["state", "input"]).reset_index(drop=True)
     return TM
 
 
@@ -118,15 +125,14 @@ def Turing_from_Goedel(number):
 
 
 
-
-def Goedel_from_Turing(TM: Turing, showTable=True):
+def Goedel_from_Turing(TM: Turing, showSteps=True, returnPrimfactors=False):
     df = TM.df.copy()
     df = df.sort_values(by=["state", "input"]).reset_index(drop=True)
 
     k = len(set(df["state"])) - 1
-    T = sorted(set(df["input"]).union(set(df["output"])).difference({"r", "l", "h"}))
+    T = sorted(set(df["input"]).union(set(df["output"])).difference({"r", "l", "h", "-"}))
     T = tuple(T)
-    m = len(T) -1
+    m = len(T)
     
     prims_numbers = get_prim_numbers()
 
@@ -138,44 +144,52 @@ def Goedel_from_Turing(TM: Turing, showTable=True):
     def getMatrix(matrix: np.ndarray):
         matrix = matrix.copy()
         def replace(x):
-            if x == "h": return m+3
+            if x == "-": return 0
+            elif x == "h": return m+3
             elif x=="r": return m+2
             elif x=="l": return m+1
-            else: return T.index(x)
+            else: return T.index(x) +1
                 
         for i in (1,3):
             for j in range(matrix.shape[0]):
                 matrix[j,i] = replace(matrix[j,i])
+
         return matrix
     
     C = getMatrix(df.values)
 
-    df = {"P_sigma2(i,3)": [], "P_sigma2(i,4)": [], "ci3":[], "ci4": []}
+    if showSteps: 
+        display(HTML(df.to_html(index=False)))
+        print(C)
+
+        df = {"sigma2(i,3)": [], "sigma2(i,4)": [],"P_sigma2(i,3)^ci3": [], "P_sigma2(i,4)^ci4": []}
 
     for i in range(1,(k+1)*(m+1)+1):
         for j in (3,4): # (3,4)
             sigma = sigma2(i,j)
             p = int(prims_numbers[sigma-1])
             c = C[i-1,j-1]
-
-            if j==3:
-                df["P_sigma2(i,3)"].append(p)
-                df["ci3"].append(c)
-            else: 
-                df["P_sigma2(i,4)"].append(p)
-                df["ci4"].append(c)
-
+            if showSteps:
+                df[f"sigma2(i,{j})"].append(sigma)
+                df[f"P_sigma2(i,{j})^ci{j}"].append(f"${p}^{c}$")           
             prims_factors[p] = c
 
-    if showTable:  
-        display(Math("$$"+r"\hspace{1cm}".join(["i", r"p_{\sigma_2(i,3)}", r"p_{\sigma_2(i,4)}", r"c_{ij}", r"c_{ij}"]) +"$$"))
-        df = pd.DataFrame(df, index=pd.Series(np.arange(1,len(df["ci3"])+1), name="i"))
-        display(HTML(df.to_html(escape=False)))
-    
-    prod_str = [f"{x}^"+"{"+f"{y}"+"}" for x,y in filter(lambda x: x[1] !=0, prims_factors.items())]
+    if showSteps:
+        display(Markdown(
+        pd.DataFrame(df, index=pd.Series(np.arange(1,len(df["sigma2(i,3)"])+1), name="i")).rename(columns={
+            "P_sigma2(i,3)^ci3": r"$p_{\sigma_2(i,3)}^{c_{i3}}$",
+            "P_sigma2(i,4)^ci4": r"$p_{\sigma_2(i,4)}^{c_{i4}}$",
+            "sigma2(i,3)": r"$\sigma_2(i,3)$",
+            "sigma2(i,4)": r"$\sigma_2(i,4)$",
+        }).to_markdown()
+        ))
+    prims_factors = {k: v for k, v in prims_factors.items() if v != 0}
+    prod_str = [f"{x}^"+"{"+f"{y}"+"}" for x,y in prims_factors.items()]
 
     display(Math(r"\text{Gödelnummer:}\hspace{1cm}" + f"{r"\cdot ".join(prod_str)}$$"))
 
+    if returnPrimfactors:
+        return prims_factors
     prod = 1
     for key,value in prims_factors.items():
         newprod = prod * key**value
