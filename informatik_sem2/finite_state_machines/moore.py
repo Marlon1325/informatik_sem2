@@ -14,7 +14,6 @@ class Delta:
         n=len(list(table.values())[0])
         states = list(range(n))
         self.df = pd.DataFrame(table, index=states, dtype=np.int16).T
-        self.df.apply(lambda x: "s"+str(x))
         
     def __call__(self, state, input):
         if state not in self.df.columns:
@@ -25,7 +24,12 @@ class Delta:
 
     def __repr__(self):
         return self.df.__repr__()
-        
+    
+    def _repr_markdown_(self):
+        df = self.df.copy()
+        df.index.name = r"$$\delta$$"
+        df = df.reset_index()
+        return df.to_markdown(index=False)
 
 
 class Beta:
@@ -42,6 +46,9 @@ class Beta:
     def __repr__(self):
         return self.S.__repr__()
     
+    def _repr_markdown_(self):
+        S = pd.DataFrame({r"$$\beta$$": self.S})
+        return S.T.to_markdown()
 
 
 
@@ -111,6 +118,21 @@ delta - "Zustandübergangsfunktion":
 
 beta - Ausgabefunktion:
 {self.beta.__repr__()}
+"""
+    
+    def _repr_markdown_(self):
+        return f"""
+States:  {self.states}\n
+Inputs:  {self.inputs}\n
+Outputs: {self.outputs}\n
+
+
+delta - "Zustandübergangsfunktion": 
+{self.delta._repr_markdown_()}
+
+
+beta - Ausgabefunktion:
+{self.beta._repr_markdown_()}
 """
 
     def minimize_plot(M) -> list[set[int]]:
