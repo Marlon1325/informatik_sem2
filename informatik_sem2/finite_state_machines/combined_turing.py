@@ -110,15 +110,17 @@ class Combined_Turing:
     
     def Ls(self, n=1):
         for _ in range(n):
-            self.l()
-            if self.read() == "|":
-                return self
+            while True:
+                self.l()
+                if self.read() == "|":
+                    return self
             
     def Rs(self, n=1):
         for _ in range(n):
-            self.R()
-            if self.read() == "|":
-                return self
+            while True:
+                self.r()
+                if self.read() == "|":
+                    return self
 
 
 
