@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 import itertools
-
+import copy
 
 
 import pandas as pd
@@ -211,56 +211,27 @@ beta - Ausgabefunktion:
     
 
     
-    def create_minimized_moore(M, state_groups):
+    def create_minimized_moore(self, state_groups:list[set]):
         """
         Minimiert einen Moore-Automaten auf Basis gegebener Äquivalenzklassen
         und gibt einen neuen Automaten mit ganzzahligen Zuständen zurück.
         """
         # Fehlende Zustände ergänzen
-        all_states = set(M.states)
-        grouped_states = set().union(*state_groups)
-        missing_states = all_states - grouped_states
-        for s in missing_states:
-            state_groups.append({s})
+        delta = copy.deepcopy(self.delta)
+        beta = self.beta.S.to_dict()
 
-        # Mapping: alter Zustand → neuer Zustand
-        state_map = {}
-        for new_state, group in enumerate(state_groups):
-            for old_state in group:
-                state_map[old_state] = new_state
-
-        num_new_states = len(state_groups)
-        new_states = tuple(range(num_new_states))
-
-        # Neue Ausgabefunktion
-        new_beta_values = [M.beta(min(group)) for group in state_groups]
-        new_beta = Beta(new_beta_values)
-
-        # Neue Übergangsfunktion
-        new_delta_dict = {a: [None] * num_new_states for a in M.inputs}
-        for new_state, group in enumerate(state_groups):
-            rep = min(group)
-            for a in M.inputs:
-                old_target = M.delta(rep, a)
-                new_target = state_map[old_target]
-                new_delta_dict[a][new_state] = new_target
-
-        new_delta = Delta(new_delta_dict)
-
-        # Neuer Startzustand
-        new_q0 = state_map[M.q]
-
-        # Neue Output-Menge
-        new_outputs = tuple(sorted(set(new_beta_values)))
-
-        return Moore(
-            states=new_states,
-            inputs=M.inputs,
-            outputs=new_outputs,
-            delta=new_delta,
-            beta=new_beta,
-            q0=new_q0
-        )
+        for s1,s2 in state_groups:
+            delta.df = delta.df.map(lambda x: s1 if x==s2 else x)
+            del delta.df[s2]
+            del beta[s2]
+        Map = { x: y for x,y in zip(delta.df.columns, range(len(delta.df.columns)))}
+        beta = {Map[k]:v for k,v in beta.items()}
+        beta = Beta(pd.Series(beta))
+        delta.df = delta.df.rename(columns=Map)
+        delta.df = delta.df.map(lambda x: Map[x])
+        M = Moore(self.states, self.inputs, self.outputs, delta, beta)
+        M.q =0
+        return M
 
 
 def merge_sets(sets):
