@@ -9,12 +9,14 @@ class Combined_Turing:
             self.head -= 1
             absolute_pos = self.head + self.zero_index
             self.__ensure_bounds(absolute_pos)
+        return self
 
     def r(self, n=1):
         for _ in range(n):
             self.head += 1
             absolute_pos = self.head + self.zero_index
             self.__ensure_bounds(absolute_pos)
+        return self
 
     def write(self, symbol: str):
         absolute_pos = self.head + self.zero_index
@@ -50,6 +52,7 @@ class Combined_Turing:
             self.l()
             while self.read() != "-":
                 self.l()
+        return self
 
     def R(self, n=1):
         "große Rechts-Maschine"
@@ -57,14 +60,17 @@ class Combined_Turing:
             self.r()
             while self.read() != "-":
                 self.r()
+        return self
 
     def b(self):
         "schreibt blank"
         self.write("-")
+        return self
 
     def line(self):
         "schreibt |"
         self.write("|")
+        return self
 
 
     def T_l(self):
@@ -77,6 +83,7 @@ class Combined_Turing:
             self.b()
             self.l()
             self.line()
+        return self
 
 
     def K(self, m=1, n=1):
@@ -99,6 +106,19 @@ class Combined_Turing:
                 self.r()
                 self.write(x)
             self.r()
+        return self
+    
+    def Ls(self, n=1):
+        for _ in range(n):
+            self.l()
+            if self.read() == "|":
+                return self
+            
+    def Rs(self, n=1):
+        for _ in range(n):
+            self.R()
+            if self.read() == "|":
+                return self
 
 
 
