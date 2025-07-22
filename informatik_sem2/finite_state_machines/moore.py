@@ -36,12 +36,12 @@ class Beta:
     "Ausgabefunktion"
     def __init__(self, array):
         states = list(range(len(array)))
-        self.S = pd.Series(array, index=states, dtype=np.int16)
+        self.S = pd.Series(array, index=states)
 
     def __call__(self, state):
         if not state in self.S.index:
             raise ValueError(f"State {state} is not in {list(self.S.index)}")
-        return int(self.S.loc[state])
+        return self.S.loc[state]
     
     def __repr__(self):
         return self.S.__repr__()
