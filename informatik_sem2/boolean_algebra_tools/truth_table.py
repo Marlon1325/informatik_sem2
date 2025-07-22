@@ -32,7 +32,7 @@ def truth_table(*functions: FunctionType, dtype:type = np.int8)->pd.Series | pd.
 
         for f in functions:
             m = len(inspect.signature(f).parameters)
-            erg = np.bool(f(*b_int[:m])) # max m parameter
+            erg = np.bool_(f(*b_int[:m])) # max m parameter
             name:str
             if f.__name__ == "<lambda>":
                 name = f"lambda_{lambda_counter}"

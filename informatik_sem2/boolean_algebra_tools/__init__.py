@@ -21,7 +21,7 @@ def highlight_df(df: pd.DataFrame, color="red", value=1):
         df = pd.DataFrame(df)
     return df.style.map(lambda val: f'color: {color}' if val == value else '')
 
-def areEqual(*functions: FunctionType) -> np.bool:
+def areEqual(*functions: FunctionType) -> np.bool_:
     "returns True if boolean functions are equal"
     tt = truth_table(*functions)
     tt['='] = tt.nunique(axis=1) == 1
