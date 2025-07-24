@@ -3,99 +3,90 @@ import pandas as pd
 import string
 from .use_np import use_np
 from types import FunctionType
+import itertools
 
 __all__ = ["McCluskey", "create_function_from_prims", "prim_implicants_table"]
 
-def McCluskey(funktion, printl=True)->list[str]:
-    # Wahrheitstafel erzeugen
-    tabelle: pd.Series = truth_table(funktion)
+def combine(term1, term2):
+    """Versucht zwei Terme zu kombinieren. Gibt kombinierten Term zurück oder None."""
+    diff = 0
+    combined = []
+    for a, b in zip(term1, term2):
+        if a != b:
+            if a == '-' or b == '-':
+                return None
+            diff += 1
+            combined.append('-')
+        else:
+            combined.append(a)
+    if diff == 1:
+        return ''.join(combined)
+    return None
+
+
+def printStep(round, combined_groups:set):
+    print(f"\n=== Runde {round}  ===")
+    for key, value in sorted(combined_groups.items()):
+        print(f"Einsen: {key}    {str(value).replace("'", " ").replace(",", " ")}")
+
+def sort_in_groups(minterms:set) -> dict[int,set]:
+    groups = dict()
+    for term in minterms:
+        ones = term.count('1')
+        groups.setdefault(ones, set()).add(term)  
+    return groups
+
+
+
+def McCluskey(function: FunctionType, printl=True)->set[str]:
+    "Minimiert Funktion mit dem Quine-McCluskey verfahren"
+    tabelle: pd.Series = truth_table(function)
     tabelle = tabelle[tabelle == 1]
     minterms = tabelle.index.tolist()
+    groups = sort_in_groups(minterms)
 
-    def combine(term1, term2):
-        """Versucht zwei Terme zu kombinieren. Gibt kombinierten Term zurück oder None."""
-        diff = 0
-        combined = []
-        for a, b in zip(term1, term2):
-            if a != b:
-                if a == '-' or b == '-':
-                    return None
-                diff += 1
-                combined.append('-')
-            else:
-                combined.append(a)
-        if diff == 1:
-            return ''.join(combined)
-        return None
+    round = 1
+    
+    if printl: printStep(1, groups)
 
-    def group_by_ones(terms):
-        """Gruppiert Terme nach der Anzahl Einsen."""
-        groups = {}
-        for term in terms:
-            ones = term.count('1')
-            groups.setdefault(ones, []).append(term)
-        return groups
+    while True:
+        changed = False
+        combined = set()
+        marked = set()
 
-    def print_groups(groups, step):
-        if not printl: return
-        print(f"\n=== Schritt {step}: Gruppierung nach Einsen ===")
-        for ones_count, terms in sorted(groups.items()):
-            print(f"{ones_count} Eins(en): {terms}")
+        for i in range(min(groups.keys()), max(groups.keys())):
+            if i not in groups or i + 1 not in groups:
+                continue
+            for term1, term2 in itertools.product(groups[i], groups[i + 1]):
+                combined_term = combine(term1, term2)
+                if combined_term is not None:
+                    marked.add(term1)
+                    marked.add(term2)
+                    combined.add(combined_term)
+                    changed = True
 
-    def get_prime_implicants(minterms):
-        """Hauptschritt des Quine-McCluskey-Verfahrens."""
-        terms = minterms[:]
-        prime_implicants = set()
-        step = 1
+        # --- Neue Gruppen aus kombinierten Termen ---
+        combined_groups = sort_in_groups(combined)
 
-        while True:
-            groups = group_by_ones(terms)
-            print_groups(groups, step)
+        # --- Alle nicht kombinierten (unmarkierten) Terme sollen mitgegeben werden ---
+        for group_key, term_set in groups.items():
+            unmarked = term_set.difference(marked)
+            if unmarked:
+                combined_groups.setdefault(group_key, set()).update(unmarked)
 
-            new_terms = set()
-            marked = set()
-
-            sorted_groups = sorted(groups.items())
-            for i in range(len(sorted_groups) - 1):
-                group1 = sorted_groups[i][1]
-                group2 = sorted_groups[i + 1][1]
-                for term1 in group1:
-                    for term2 in group2:
-                        combined = combine(term1, term2)
-                        if combined:
-                            marked.add(term1)
-                            marked.add(term2)
-                            new_terms.add(combined)
-
-            # Nicht kombinierte Terme sind Prime-Implicants dieser Runde
-            non_combined = [term for term in terms if term not in marked]
-            if non_combined:
-                if printl:
-                    # print(f"Nicht kombinierbare Terme (Prime-Implicants dieser Runde): {non_combined}")
-                    print("Nicht kombinierbare Terme (Prime-Implicants dieser Runde):")
-                    print(sorted(non_combined, key=lambda x: x.count("1") ), end="\n"*2)
-                prime_implicants.update(non_combined)
-
-            if not new_terms:
-                break
+        if changed:
+            round += 1
+            groups = combined_groups
             if printl:
-                # print(f"Neue kombinierte Terme: {sorted(new_terms)}")
-                print("Neue kombinierte Terme:")
-                print(sorted(new_terms, key=lambda x: x.count("1") ), end="\n"*2)
-            terms = list(new_terms)
-            step += 1
+                printStep(round, combined_groups)
 
-        return list(prime_implicants)
-
-    # Prime-Implicants berechnen
-    prime_implicants = get_prime_implicants(minterms)
-
-    if printl:
-        print("\n=== Endgültige Prime-Implicants ===")
-        for imp in prime_implicants:
-            print(imp)
-
-    return prime_implicants
+        else:
+            break
+    
+    prims_implicants = set()
+    for value in combined_groups.values():
+        prims_implicants.update(value)
+    return prims_implicants
 
 
 def minterm(prims, variables=string.ascii_lowercase, AND="*", NOT="~"):
