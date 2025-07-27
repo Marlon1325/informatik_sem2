@@ -12,7 +12,9 @@ __all__ = [
     "use_np",
     "McCluskey",
     "highlight_df",
-    "areEqual"
+    "areEqual",
+    "int_to_bin",
+    "bin_to_int"
 ]
 
 
@@ -26,3 +28,19 @@ def areEqual(*functions: FunctionType) -> np.bool_:
     tt = truth_table(*functions)
     tt['='] = tt.nunique(axis=1) == 1
     return tt["="].all()
+
+
+
+def int_to_bin(n:int, digits:int=None, dtype=tuple):
+    if digits is not None:
+        x = f"{n:0{digits}b}"
+    else:
+        x= f"{n:b}"
+    if dtype is str:
+        return x
+    else:
+        return dtype(map(int, x))
+
+def bin_to_int(*n):
+    n = "".join(map(str, n))
+    return int(n,2)
